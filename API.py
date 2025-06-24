@@ -20,7 +20,7 @@ def bytes_to_gb(value):
 
 @app.get("/cpu", dependencies=[Depends(validate_token)])
 def cpu_usage():
-    usage_per_core = psutil.cpu_percent(percpu=True)
+    usage_per_core = psutil.cpu_percent(interval=0.5,percpu=True)
     return [{"core": f"Core {i}", "usage_percent": usage} for i, usage in enumerate(usage_per_core)]
 
 @app.get("/memory", dependencies=[Depends(validate_token)])
