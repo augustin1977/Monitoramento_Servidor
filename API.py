@@ -1,24 +1,39 @@
 # main.py
-from fastapi import FastAPI
+from fastapi import FastAPI,Depends
 import psutil
 import shutil
 import os
+from AUTH import validate_token
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Em produção, defina uma lista segura
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def bytes_to_gb(value):
     return round(value / (1024 ** 3), 2)  # GB com 2 casas decimais
 
-@app.get("/cpu")
+@app.get("/cpu", dependencies=[Depends(validate_token)])
 def cpu_usage():
-    return {"cpu_percent": psutil.cpu_percent(interval=1)}
+    usage_per_core = psutil.cpu_percent(percpu=True)
+    return [{"core": f"Core {i}", "usage_percent": usage} for i, usage in enumerate(usage_per_core)]
 
-@app.get("/memory")
+@app.get("/memory", dependencies=[Depends(validate_token)])
 def memory_info():
     mem = psutil.virtual_memory()
-    return {"total": mem.total, "available": mem.available, "percent": mem.percent}
+    return {
+        "total_gb": bytes_to_gb(mem.total),
+        "available_gb": bytes_to_gb(mem.available),
+        "used_gb": bytes_to_gb(mem.used),
+        "free_gb": bytes_to_gb(mem.free),
+        "percent_used": mem.percent}
 
-@app.get("/disk")
+@app.get("/disk", dependencies=[Depends(validate_token)])
 def disk_info():
     partitions = psutil.disk_partitions(all=False)
     disk_data = []
@@ -44,7 +59,7 @@ def disk_info():
 
     return disk_data
 
-@app.get("/temperature")
+@app.get("/temperature", dependencies=[Depends(validate_token)])
 def temperature():
     try:
         import subprocess

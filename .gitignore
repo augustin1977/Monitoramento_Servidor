@@ -1,7 +1,7 @@
 # User exclusions
 *.csv
 *.CSV
-
+users.py
 
 
 # Byte-compiled / optimized / DLL files

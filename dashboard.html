@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Status do Servidor</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    h2 {
+      margin-top: 30px;
+    }
+    .section {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-top: 10px;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+    }
+    input {
+      padding: 5px;
+      margin-right: 10px;
+    }
+    #status {
+      color: green;
+      margin-top: 10px;
+    }
+    pre {
+      white-space: pre-wrap;
+    }
+    table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+table th, table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+table thead {
+  background-color: #eee;
+}
+
+@media (max-width: 600px) {
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tr {
+    margin-bottom: 1rem;
+  }
+
+  td {
+    position: relative;
+    padding-left: 50%;
+  }
+
+  td::before {
+    position: absolute;
+    top: 0;
+    left: 10px;
+    font-weight: bold;
+    white-space: nowrap;
+    content: attr(data-label);
+  }
+}
+
+  </style>
+</head>
+<body>
+  <h1>Monitoramento do Servidor</h1>
+
+  <div>
+    <label for="token">Token de Acesso:</label>
+    <input type="text" id="token" placeholder="Cole seu token aqui" />
+    <button onclick="startMonitoring()">Iniciar</button>
+    <div id="status"></div>
+  </div>
+
+  <div id="monitor" style="display:none;">
+    <h2>CPU</h2>
+    <div class="section" id="cpu"></div>
+
+    <h2>Memória</h2>
+    <div class="section" id="memory"></div>
+
+    <h2>Discos</h2>
+    <div class="section" id="disk"></div>
+
+    <h2>Temperatura</h2>
+    <div class="section" id="temperature"></div>
+  </div>
+
+  <script>
+    let token = "";
+    let intervalId = null;
+
+    function startMonitoring() {
+      token = document.getElementById("token").value.trim();
+      if (!token) {
+        alert("Por favor, insira um token válido.");
+        return;
+      }
+
+      document.getElementById("monitor").style.display = "block";
+      document.getElementById("status").textContent = "Monitoramento iniciado.";
+      updateAll();
+      clearInterval(intervalId);
+      intervalId = setInterval(updateAll, 1000); // Atualiza a cada 5s
+    }
+const API_URL = "http://localhost:8000";
+
+async function fetchData(endpoint, targetId) {
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    const data = await response.json();
+
+    // Se for lista de objetos (ex: disco), renderiza como tabela
+   
+      document.getElementById(targetId).innerHTML = renderTable(data);
+
+  } catch (err) {
+    document.getElementById(targetId).innerHTML = "Erro: " + err.message;
+  }
+}
+
+
+    function updateAll() {
+      fetchData("/cpu", "cpu");
+      fetchData("/memory", "memory");
+      fetchData("/disk", "disk");
+      fetchData("/temperature", "temperature");
+    }
+
+function renderTable(data) {
+  if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
+    // Array de objetos → tabela padrão
+    const keys = Object.keys(data[0]);
+    const header = `<tr>${keys.map(k => `<th>${k}</th>`).join('')}</tr>`;
+    const rows = data.map(item => 
+      `<tr>${keys.map(k => `<td data-label="${k}">${item[k]}</td>`).join('')}</tr>`
+    ).join('');
+    return `<table>${header}${rows}</table>`;
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    // Objeto simples → tabela com chaves no cabeçalho e valores na linha de baixo
+    const keys = Object.keys(data);
+    const values = Object.values(data);
+    const header = `<tr>${keys.map(k => `<th>${k}</th>`).join('')}</tr>`;
+    const row = `<tr>${values.map(v => `<td>${v}</td>`).join('')}</tr>`;
+    return `<table>${header}${row}</table>`;
+  }
+
+  // Qualquer outro dado → JSON formatado
+  return `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+}
+
+  </script>
+</body>
+</html>
